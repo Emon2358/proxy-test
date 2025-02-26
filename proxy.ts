@@ -6,20 +6,28 @@ export async function fetch(request: Request): Promise<Response> {
   if (!targetUrl) {
     return new Response("URLが指定されていません", { status: 400 });
   }
+
   try {
     // 入力されたサイトへ非同期アクセス
     const response = await fetch(targetUrl);
     const elapsed = performance.now() - startTime;
-    // CORS対応および処理時間をレスポンスヘッダーに付与
+    // レスポンスの内容を arrayBuffer として取得（ストリーミングではなく一括読み込み）
+    const body = await response.arrayBuffer();
+    // レスポンスヘッダーを複製し、CORS 対応と経過時間を付与
     const newHeaders = new Headers(response.headers);
     newHeaders.set("Access-Control-Allow-Origin", "*");
     newHeaders.set("X-Async-Time", `${elapsed.toFixed(2)}ms`);
-    return new Response(response.body, {
+
+    return new Response(body, {
       status: response.status,
       headers: newHeaders,
     });
   } catch (error) {
     const elapsed = performance.now() - startTime;
-    return new Response("フェッチエラー: " + error.message + ` (Elapsed: ${elapsed.toFixed(2)}ms)`, { status: 500 });
+    const message = error instanceof Error ? error.message : String(error);
+    return new Response(
+      "フェッチエラー: " + message + ` (Elapsed: ${elapsed.toFixed(2)}ms)`,
+      { status: 500 }
+    );
   }
 }
