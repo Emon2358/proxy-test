@@ -3,7 +3,7 @@ addEventListener("fetch", (event) => {
 });
 
 // プロキシのトップページ用HTML
-const htmlForm = `<!DOCTYPE html>
+const htmlForm = <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="utf-8">
@@ -32,7 +32,7 @@ const htmlForm = `<!DOCTYPE html>
     <button type="submit">送信</button>
   </form>
 </body>
-</html>`;
+</html>;
 
 async function handleRequest(request) {
   const url = new URL(request.url);
@@ -75,46 +75,10 @@ async function handleRequest(request) {
     return new Response("対象URLの取得中にエラーが発生しました: " + error, { status: 500 });
   }
 
-  // リダイレクト時のLocationヘッダーをプロキシ経由に書き換え
-  if (response.status >= 300 && response.status < 400) {
-    const location = response.headers.get("location");
-    if (location) {
-      try {
-        const redirectUrl = new URL(location, baseTargetUrl);
-        const newLocation = `/?target=${encodeURIComponent(redirectUrl.href)}`;
-        const newResponseHeaders = new Headers(response.headers);
-        newResponseHeaders.set("location", newLocation);
-        return new Response(response.body, {
-          status: response.status,
-          statusText: response.statusText,
-          headers: newResponseHeaders,
-        });
-      } catch (e) {
-        // URLのパースに失敗した場合はそのまま返す
-      }
-    }
-  }
-
   const contentType = response.headers.get("content-type") || "";
   if (contentType.includes("text/html")) {
     let text = await response.text();
     text = rewriteHTML(text, baseTargetUrl);
-
-    // <head>タグ内に<base>タグを挿入して、相対リンクを補正
-    text = text.replace(/<head(.*?)>/i, `<head$1><base href="/?target=${encodeURIComponent(baseTargetUrl.href)}">`);
-
-    // インラインスクリプトを挿入して、クリック時のリンク遷移もプロキシ経由にする
-    text = text.replace(/<\/head>/i, `<script>
-      (function() {
-        document.addEventListener('click', function(e) {
-          const target = e.target.closest('a');
-          if (target && target.href) {
-            e.preventDefault();
-            window.location.href = '/?target=' + encodeURIComponent(target.href);
-          }
-        });
-      })();
-    </script></head>`);
 
     const newResponseHeaders = new Headers(response.headers);
     newResponseHeaders.delete("content-security-policy");
@@ -131,7 +95,7 @@ async function handleRequest(request) {
 }
 
 function rewriteHTML(html, baseUrl) {
-  return html.replace(/(href|src|action)="([^"]+)"/gi, (match, attr, urlValue) => {
+  return html.replace(/(href|src|action)=\"([^\"]+)\"/gi, (match, attr, urlValue) => {
     if (urlValue.startsWith("javascript:") || urlValue.startsWith("data:") || urlValue.startsWith("#")) {
       return match;
     }
@@ -141,6 +105,6 @@ function rewriteHTML(html, baseUrl) {
     } catch (error) {
       return match;
     }
-    return `${attr}="/?target=${encodeURIComponent(resolvedUrl.href)}"`;
+    return ${attr}="/?target=${encodeURIComponent(resolvedUrl.href)}";
   });
 }
