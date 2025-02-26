@@ -1,33 +1,53 @@
-export async function fetch(request: Request): Promise<Response> {
-  // 処理開始時刻の記録
-  const startTime = performance.now();
-  const { searchParams } = new URL(request.url);
-  const targetUrl = searchParams.get("url");
-  if (!targetUrl) {
-    return new Response("URLが指定されていません", { status: 400 });
-  }
+import { serve } from "https://deno.land/std@0.170.0/http/server.ts";
 
-  try {
-    // 入力されたサイトへ非同期アクセス
-    const response = await fetch(targetUrl);
-    const elapsed = performance.now() - startTime;
-    // レスポンスの内容を arrayBuffer として取得（ストリーミングではなく一括読み込み）
-    const body = await response.arrayBuffer();
-    // レスポンスヘッダーを複製し、CORS 対応と経過時間を付与
-    const newHeaders = new Headers(response.headers);
-    newHeaders.set("Access-Control-Allow-Origin", "*");
-    newHeaders.set("X-Async-Time", `${elapsed.toFixed(2)}ms`);
-
-    return new Response(body, {
-      status: response.status,
-      headers: newHeaders,
+serve(async (req: Request) => {
+  const url = new URL(req.url);
+  
+  // トップページ：HTMLフォームを表示
+  if (url.pathname === "/" && req.method === "GET") {
+    const html = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Reverse Proxy</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; }
+    input[type="text"] { width: 300px; padding: 8px; }
+    button { padding: 8px 12px; }
+  </style>
+</head>
+<body>
+  <h1>Reverse Proxy</h1>
+  <form action="/proxy" method="GET">
+    <label for="url">URL:</label>
+    <input type="text" id="url" name="url" placeholder="https://example.com" required>
+    <button type="submit">アクセス</button>
+  </form>
+</body>
+</html>`;
+    return new Response(html, {
+      headers: { "Content-Type": "text/html; charset=utf-8" },
     });
-  } catch (error) {
-    const elapsed = performance.now() - startTime;
-    const message = error instanceof Error ? error.message : String(error);
-    return new Response(
-      "フェッチエラー: " + message + ` (Elapsed: ${elapsed.toFixed(2)}ms)`,
-      { status: 500 }
-    );
+  
+  // /proxyエンドポイント：指定されたURLに対してリバースプロキシ処理
+  } else if (url.pathname === "/proxy" && req.method === "GET") {
+    const targetUrl = url.searchParams.get("url");
+    if (!targetUrl) {
+      return new Response("URLが指定されていません", { status: 400 });
+    }
+    try {
+      // 入力されたURLへリクエストを送信
+      const response = await fetch(targetUrl);
+      const contentType = response.headers.get("content-type") || "text/plain";
+      const body = await response.arrayBuffer();
+      return new Response(body, {
+        status: response.status,
+        headers: { "Content-Type": contentType },
+      });
+    } catch (error) {
+      return new Response("プロキシエラー: " + error.message, { status: 500 });
+    }
+  } else {
+    return new Response("Not Found", { status: 404 });
   }
-}
+});
