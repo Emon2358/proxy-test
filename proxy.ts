@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.170.0/http/server.ts";
 serve(async (req: Request) => {
   const url = new URL(req.url);
   
-  // トップページ：HTMLフォームを表示
+  // トップページ：URL入力フォームを表示
   if (url.pathname === "/" && req.method === "GET") {
     const html = `<!DOCTYPE html>
 <html lang="ja">
@@ -29,21 +29,33 @@ serve(async (req: Request) => {
       headers: { "Content-Type": "text/html; charset=utf-8" },
     });
   
-  // /proxyエンドポイント：指定されたURLに対してリバースプロキシ処理
+  // /proxyエンドポイント：指定URLのコンテンツを取得して返す
   } else if (url.pathname === "/proxy" && req.method === "GET") {
     const targetUrl = url.searchParams.get("url");
     if (!targetUrl) {
       return new Response("URLが指定されていません", { status: 400 });
     }
     try {
-      // 入力されたURLへリクエストを送信
       const response = await fetch(targetUrl);
-      const contentType = response.headers.get("content-type") || "text/plain";
-      const body = await response.arrayBuffer();
-      return new Response(body, {
-        status: response.status,
-        headers: { "Content-Type": contentType },
-      });
+      const contentType = response.headers.get("content-type") || "";
+      
+      // HTMLの場合は、<head>タグ内に<base>タグを挿入し、
+      // 相対URLが元のサイトを基準に解決されるようにする
+      if (contentType.includes("text/html")) {
+        let htmlText = await response.text();
+        htmlText = htmlText.replace(/<head([^>]*)>/i, `<head$1><base href="${targetUrl}">`);
+        return new Response(htmlText, {
+          status: response.status,
+          headers: { "Content-Type": contentType },
+        });
+      } else {
+        // HTML以外のコンテンツはそのまま返す
+        const body = await response.arrayBuffer();
+        return new Response(body, {
+          status: response.status,
+          headers: { "Content-Type": contentType },
+        });
+      }
     } catch (error) {
       return new Response("プロキシエラー: " + error.message, { status: 500 });
     }
