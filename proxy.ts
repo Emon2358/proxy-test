@@ -3,7 +3,7 @@ addEventListener("fetch", (event) => {
 });
 
 // プロキシのトップページ用HTML
-const htmlForm = <!DOCTYPE html>
+const htmlForm = `<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="utf-8">
@@ -32,7 +32,7 @@ const htmlForm = <!DOCTYPE html>
     <button type="submit">送信</button>
   </form>
 </body>
-</html>;
+</html>`;
 
 async function handleRequest(request) {
   const url = new URL(request.url);
@@ -105,6 +105,6 @@ function rewriteHTML(html, baseUrl) {
     } catch (error) {
       return match;
     }
-    return ${attr}="/?target=${encodeURIComponent(resolvedUrl.href)}";
+    return `${attr}="/?target=${encodeURIComponent(resolvedUrl.href)}"`;
   });
 }
